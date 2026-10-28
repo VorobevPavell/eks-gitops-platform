@@ -1,9 +1,6 @@
 environment: dev
-
 replicaCount: 1
-
 image:
-  tag: sha-0000000
-
+  tag: sha-8a39a6c
 serviceMonitor:
   enabled: true
