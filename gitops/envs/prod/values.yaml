@@ -1,0 +1,23 @@
+environment: prod
+
+image:
+  tag: sha-0000000
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+serviceMonitor:
+  enabled: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 48Mi
+  limits:
+    memory: 96Mi

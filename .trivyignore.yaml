@@ -1,0 +1,8 @@
+misconfigurations:
+  - id: AWS-0040
+    paths:
+      - terraform/modules/eks/main.tf
+    statement: >
+      The module keeps the API endpoint private by default. The dev environment opts in to a public
+      endpoint so Terraform and kubectl can reach it without a VPN; access is limited to
+      public_access_cidrs, and the module rejects 0.0.0.0/0 or an empty list.

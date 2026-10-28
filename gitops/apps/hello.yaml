@@ -1,0 +1,51 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: hello
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          - env: dev
+            revision: main
+          - env: prod
+            revision: prod
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  template:
+    metadata:
+      name: "hello-{{ .env }}"
+      labels:
+        app.kubernetes.io/name: hello
+        environment: "{{ .env }}"
+    spec:
+      project: hello
+      sources:
+        - repoURL: https://github.com/VorobevPavell/eks-gitops-platform.git
+          targetRevision: "{{ .revision }}"
+          path: charts/hello
+          helm:
+            releaseName: hello
+            valueFiles:
+              - "$values/gitops/envs/{{ .env }}/values.yaml"
+        - repoURL: https://github.com/VorobevPavell/eks-gitops-platform.git
+          targetRevision: "{{ .revision }}"
+          ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "hello-{{ .env }}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

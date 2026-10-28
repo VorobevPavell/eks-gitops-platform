@@ -1,0 +1,37 @@
+name: promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: Environment whose image is promoted
+        type: choice
+        options: [dev]
+        default: dev
+      to:
+        description: Target environment
+        type: choice
+        options: [prod]
+        default: prod
+
+permissions:
+  contents: write
+
+concurrency:
+  group: promote-${{ inputs.to }}
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.to }}
+    env:
+      FROM: ${{ inputs.from }}
+      TO: ${{ inputs.to }}
+      REASON: promoted from ${{ inputs.from }} by ${{ github.actor }}, run #${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set the ${{ inputs.to }} image to the one running in ${{ inputs.from }}
+        run: scripts/set-image-tag.sh "$TO" "$(yq '.image.tag' "gitops/envs/$FROM/values.yaml")" "$REASON"
+      - name: Move the ${{ inputs.to }} branch to the commit dev already runs
+        run: git push origin "HEAD:refs/heads/$TO"

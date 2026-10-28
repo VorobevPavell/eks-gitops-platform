@@ -1,0 +1,6 @@
+apiVersion: v2
+name: hello
+description: Small HTTP service used to exercise the GitOps delivery path
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

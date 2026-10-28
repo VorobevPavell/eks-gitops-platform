@@ -1,0 +1,76 @@
+name: terraform
+
+on:
+  pull_request:
+    paths: ["terraform/**", "gitops/bootstrap/**", ".trivyignore.yaml", ".github/workflows/terraform.yml"]
+  push:
+    branches: [main]
+    paths: ["terraform/**", "gitops/bootstrap/**", ".trivyignore.yaml", ".github/workflows/terraform.yml"]
+
+permissions:
+  contents: read
+
+env:
+  TF_VERSION: 1.17.0
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - run: terraform fmt -recursive -check terraform
+      - name: Validate dev environment
+        working-directory: terraform/envs/dev
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [network, eks, argocd]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - name: terraform test (mocked providers, no cloud credentials)
+        working-directory: terraform/modules/${{ matrix.module }}
+        run: |
+          terraform init -backend=false -input=false
+          terraform test
+
+  tflint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: terraform-linters/setup-tflint@v6
+        with:
+          tflint_version: v0.65.0
+      - name: tflint
+        working-directory: terraform
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          tflint --init --config "$PWD/.tflint.hcl"
+          tflint --recursive --config "$PWD/.tflint.hcl" --format compact
+
+  security:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          trivyignores: .trivyignore.yaml
+          exit-code: "1"
