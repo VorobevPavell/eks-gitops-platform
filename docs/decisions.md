@@ -13,14 +13,15 @@ memory and annotations instead of in history. One commit per deploy keeps rollba
 
 ## 2. Prod follows its own branch; promotion moves it
 
-`hello-dev` tracks `main`, `hello-prod` tracks the `prod` branch. `promote` sets the prod image tag to
-the one running in dev and fast-forwards `prod` to that `main` commit. Chart and values changes
-therefore reach production the same way images do: after they have run in dev, and only through a
-promotion.
+`hello-dev` tracks `main`, `hello-prod` tracks the `prod` branch. `promote` takes the commit dev is
+synced to, sets the prod image tag to the one dev ran at that commit, and fast-forwards `prod`. It
+refuses when `main` has changed `charts/` or the prod values after that commit, before and again
+after writing the tag, so a chart change or a newer image cannot ride along into prod untested.
 
-The job runs in the GitHub `prod` environment; once that environment has required reviewers (README,
-"Repository setup"), every promotion needs an approval. Until the first promotion creates the branch,
-`hello-prod` cannot resolve its revision, which is expected on a new repository.
+The gate holds when two settings exist (README, "Repository setup"): the `prod` environment with
+required reviewers, and a ruleset that lets only the promote workflow move the `prod` branch. Until
+the first promotion creates the branch, `hello-prod` cannot resolve its revision, which is expected
+on a new repository.
 
 ## 3. One ApplicationSet, values from a second source
 
@@ -94,3 +95,11 @@ Argo CD stopped assessing the health of Application resources in 1.8, so sync wa
 children of an app-of-apps do not wait for each other. The Terraform module restores the health check
 in `argocd-cm`: monitoring (wave -1) has to be Healthy, CRDs included, before the hello apps (wave 0)
 sync their ServiceMonitors.
+
+## 14. One Terraform stack for the cluster and what runs in it
+
+The Helm provider is configured from the EKS module's outputs in the same root module. That keeps
+the demo to one `apply`, at a known cost: when the cluster is replaced or destroyed, the provider
+loses its endpoint mid-run. Destroy therefore goes in two steps (README). For a long-lived platform
+I would split it into a cluster stack and a bootstrap stack that reads the cluster through
+`data "aws_eks_cluster"`.

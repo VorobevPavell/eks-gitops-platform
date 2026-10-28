@@ -45,6 +45,7 @@ the deploy commit; each commit says which tag it replaced.
 | `terraform/modules/argocd` | Argo CD and the root application through Helm |
 | `terraform/envs/dev` | The modules wired together; S3 backend with native locking |
 | `scripts/set-image-tag.sh` | Deploy-by-commit used by CI |
+| `scripts/promote.sh` | Promotion of a revision dev has run; refuses if main changed what prod renders since |
 | `scripts/e2e.sh` | kind + Argo CD end-to-end check |
 | `docs/decisions.md` | Why it is built this way |
 
@@ -82,10 +83,16 @@ These live in GitHub settings, not in code:
 
 1. Settings → Environments → `prod`: add required reviewers and limit deployment branches to `main`.
    Without it the `promote` workflow runs with no approval.
-2. After the first `app` run, make the `hello` package in GHCR public, or give the cluster an image
+2. Settings → Rules → a ruleset for the `prod` branch: block force pushes and deletion, restrict
+   updates, and put the promote workflow's identity (GitHub Actions or a deploy key it pushes with) on
+   the bypass list. Without it a direct `git push origin X:prod` deploys to prod with no approval.
+3. After the first `app` run, make the `hello` package in GHCR public, or give the cluster an image
    pull secret.
-3. Run `promote` once. It creates the `prod` branch; until then `hello-prod` reports that it cannot
-   resolve revision `prod`, and dev runs alone.
+4. Run `promote` once with the commit `hello-dev` is synced to. It creates the `prod` branch; until
+   then `hello-prod` reports that it cannot resolve revision `prod`, and dev runs alone.
+
+`promote` refuses a revision if `main` has changed `charts/` or the prod values since it, because that
+change has not run in dev yet.
 
 ## Deploy to AWS
 
@@ -104,7 +111,14 @@ kubectl -n argocd get applications
 
 Rough cost of the dev environment in eu-central-1: the EKS control plane ($0.10/h), one NAT gateway
 (about $0.05/h plus traffic) and two spot t3.medium nodes (a few cents per hour), so roughly
-$0.20/h. Check current AWS pricing before applying, and `terraform destroy` when done.
+$0.20/h. Check current AWS pricing before applying.
+
+Tear down Argo CD first, while the cluster still answers, then the rest:
+
+```sh
+terraform destroy -target=module.argocd
+terraform destroy
+```
 
 ## Next steps
 

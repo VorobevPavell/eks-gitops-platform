@@ -87,8 +87,8 @@ kubectl patch --local -f gitops/apps/hello.yaml --type=json -o yaml -p "$(cat <<
 [
   {"op": "replace", "path": "/spec/template/spec/sources/0/repoURL", "value": "$REPO_URL"},
   {"op": "replace", "path": "/spec/template/spec/sources/1/repoURL", "value": "$REPO_URL"},
-  {"op": "replace", "path": "/spec/template/spec/sources/0/targetRevision", "value": "$REVISION"},
-  {"op": "replace", "path": "/spec/template/spec/sources/1/targetRevision", "value": "$REVISION"},
+  {"op": "replace", "path": "/spec/generators/0/list/elements/0/revision", "value": "$REVISION"},
+  {"op": "replace", "path": "/spec/generators/0/list/elements/1/revision", "value": "$REVISION"},
   {"op": "add", "path": "/spec/template/spec/sources/0/helm/parameters", "value": [
     {"name": "image.repository", "value": "${IMAGE%%:*}"},
     {"name": "image.tag", "value": "${IMAGE##*:}"},

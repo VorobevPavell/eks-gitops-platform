@@ -3,6 +3,10 @@ name: promote
 on:
   workflow_dispatch:
     inputs:
+      revision:
+        description: Commit hello-dev is synced to (Argo CD, hello-dev, current sync revision)
+        type: string
+        required: true
       from:
         description: Environment whose image is promoted
         type: choice
@@ -28,10 +32,11 @@ jobs:
     env:
       FROM: ${{ inputs.from }}
       TO: ${{ inputs.to }}
-      REASON: promoted from ${{ inputs.from }} by ${{ github.actor }}, run #${{ github.run_number }}
+      REVISION: ${{ inputs.revision }}
+      REASON: "promoted ${{ inputs.revision }} from ${{ inputs.from }} by ${{ github.actor }}, run #${{ github.run_number }}"
     steps:
       - uses: actions/checkout@v7
-      - name: Set the ${{ inputs.to }} image to the one running in ${{ inputs.from }}
-        run: scripts/set-image-tag.sh "$TO" "$(yq '.image.tag' "gitops/envs/$FROM/values.yaml")" "$REASON"
-      - name: Move the ${{ inputs.to }} branch to the commit dev already runs
-        run: git push origin "HEAD:refs/heads/$TO"
+        with:
+          fetch-depth: 0
+      - name: Promote the revision ${{ inputs.from }} runs to ${{ inputs.to }}
+        run: scripts/promote.sh "$FROM" "$TO" "$REVISION" "$REASON"

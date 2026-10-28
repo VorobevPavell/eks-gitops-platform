@@ -57,4 +57,7 @@ jobs:
           provenance: true
           sbom: true
       - name: Deploy to dev by commit
-        run: scripts/set-image-tag.sh dev "${{ steps.tag.outputs.value }}" "app workflow run #${{ github.run_number }}"
+        env:
+          TAG: ${{ steps.tag.outputs.value }}
+          REASON: "app workflow run #${{ github.run_number }}"
+        run: scripts/set-image-tag.sh dev "$TAG" "$REASON"
